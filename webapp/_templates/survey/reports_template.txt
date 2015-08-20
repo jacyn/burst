@@ -1,0 +1,3 @@
+"ID", "Date/Time Added", {% for question in survey.survey_questions.all %}"{{ question.label }}", {% endfor %}
+{% for result in survey_results|dictsortreversed:"date_created" %}"{{ result.pk }}", "{{ result.date_created }}", {% for answer in result.answers.all %}"{{ answer.value|default:'-' }}", {% endfor %}
+{% endfor %}

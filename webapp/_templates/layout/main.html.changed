@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Layout{% endblock %}
+
+{% block main_container %} 
+
+<div> 
+  <button id="add-object" class="btn btn-primary">Add object</button>
+  <button id="save-layout" class="btn btn-primary">Save Layout</button>
+</div>
+<div id="layout-properties">
+</div>
+
+<div class="row">
+  <div class="col-md-7">
+    <div class="layout">
+    </div>
+  </div>
+  <div class="col-md-5">
+    <div class="properties">
+      <form id="ObjectPropertiesForm" class="form-horizontal" method="POST" action="">
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extrajs %}
+<script type="text/javascript">
+
+$(function() {
+
+  //http://stackoverflow.com/a/14645827/5064641
+  (function(old) {
+    $.fn.attr = function() {
+      if(arguments.length === 0) {
+        if(this.length === 0) {
+          return null;
+        }
+
+        var obj = {};
+        $.each(this[0].attributes, function() {
+          if(this.specified) {
+            obj[this.name] = this.value;
+          }
+        });
+        return obj;
+      }
+
+      return old.apply(this, arguments);
+    };
+  })($.fn.attr);
+
+
+  // ---
+  localStorage.clear();
+  loadLayoutObjects();
+
+  $("#add-object").on("click", function() {
+
+    var objectSeq = parseInt(localStorage.getItem("object-count")) || 0;
+    objectSeq++;
+
+    var objectId = "object-" + objectSeq;
+    var objectProperties = getObjectProperties(objectId)
+    constructObject(objectId, objectProperties);
+
+    localStorage.setItem("object-count", objectSeq);
+    objectSeq = objectSeq+1;
+  });
+
+  $("#save-layout").on("click", function() {
+    var layoutProp = {};
+    
+    $.each(localStorage, function(objectId, objectProperties) {
+      if (!(/object-\d+/.test(objectId))) { return; }
+      layoutProp[objectId] = JSON.parse(objectProperties);
+    });
+
+    $("#layout-properties").html(JSON.stringify(layoutProp));
+  });
+});
+
+function updateObjectProperties(objectId, x, y, width, height) {
+   var objectAttrs = getObjectProperties(objectId);
+
+   if (x) { objectAttrs["x"] = x; }
+   if (y) { objectAttrs["y"] = y; }
+   if (width) { objectAttrs["width"] = width; }
+   if (height) { objectAttrs["height"] = height; }
+
+  localStorage.setItem(objectId, JSON.stringify(objectAttrs));
+}
+
+function removeObject(objectId) {
+  localStorage.removeItem(objectId);
+}
+
+function getObjectProperties(objectId) {
+  if (objectAttrs = localStorage.getItem(objectId)) {
+    return JSON.parse(objectAttrs);
+  }
+
+  // return default values
+  var objectCount = parseInt(localStorage.getItem("object-count")) || 0;
+
+  var objectAttrs = {
+    "x": 10 * objectCount,
+    "y": (190 * objectCount) * -1,
+    "width": 250,
+    "height": 200
+  }
+  return objectAttrs;
+}
+
+function loadLayoutObjects() {
+  $.get( '{% url "layout:layout_objects" %}', function( data ) {
+
+    //console.log( JSON.stringify(data) );
+    var layoutObjects = data;
+
+    //var initialObjects = '{"object-1":{"x":5,"y":5,"width":378,"height":318},"object-2":{"x":388,"y":-312.99999999999994,"width":246,"height":318},"object-3":{"x":5.381922961338063,"y":-308.03330447600524,"width":627.0000038146973,"height":146},"object-4":{"x":67.95577151370804,"y":-596,"width":495.00000762939453,"height":229}}';
+    //var layoutObjects = JSON.parse(initialObjects);
+
+    $.each(layoutObjects, function(objectSeq, objectProperties) {
+      constructObject(objectProperties.code, objectProperties);
+    });
+
+    var objectCount = Object.keys(layoutObjects).length
+    localStorage.setItem("object-count", objectCount);
+
+
+  });
+}
+
+var displayObjectProperties = function () {
+  
+  var objectProperties = getObjectProperties(this.id);
+  url = '{% url "layout:properties" "CODE" %}'.replace("CODE", objectProperties.code);
+  form_sel = "#ObjectPropertiesForm";
+  
+  $(form_sel).empty().html('<h6 class="title">Loading ...</h6>');
+  $.ajax({
+      type: 'get', url: url, dataType: "html", data: null,
+      success: function(data){
+          $(form_sel).empty().append('<header>OBJECT PROPERTIES</header>').append(data);
+          $(form_sel+' #button-id-preview').click(function() {
+              
+          });
+          $(form_sel).submit(function() {
+              $.ajax({
+                  type: 'post', url: url, dataType: 'json', data: $(this).serialize(),
+                  success: function(data) {
+                      console.log("Success");
+                      return;
+                  },
+                  error: function(jqXHR, textStatus, errorThrownerror) {
+                      if (jqXHR.status != 400) {
+                          alert('Failed request: ' + textStatus + ": Please refresh");
+                          $(form_sel).empty();
+                          return;
+                      }
+                      $(form_sel).html(jqXHR.responseText);
+                      $(form_sel + ' .cancel').click(function() {
+                          $(form_sel).empty();
+                      });
+                  }
+              });
+              return false;
+          });
+          $(form_sel + ' .cancel').click(function() {
+              $(form_sel).empty();
+          });
+      },
+      error: function(jqXHR, textStatus, errorThrownerror) {
+          alert('Failed request: ' + textStatus + ": Please refresh");
+          $(form_sel).empty();
+      }
+  });
+  return this;
+
+}
+
+function constructObject(objectId, objectProperties) {
+  localStorage.setItem(objectId, JSON.stringify(objectProperties));
+
+  var objectStyle = "transform: translate(" + objectProperties.x + "px, " + objectProperties.y + "px); " +
+                      "-webkit-transform: translate(" + objectProperties.x + "px, " + objectProperties.y + "px);" +
+                      "width: " + objectProperties.width + "px; height: " + objectProperties.height + "px;"
+  var objectName = objectProperties.name || objectId.replace('-', ' ');
+
+  $('.layout').append(
+    $('<div/>')
+      .attr({
+        "id": objectId,
+        "style": objectStyle
+        })
+      .addClass("draggable object")
+      .on("click", displayObjectProperties)
+      .append(
+        $('<p/>')
+          .attr({
+            "style": "text-transform:capitalize;"
+            })
+          .text(objectName)
+        )
+        .append(
+          $('<button/>')
+            .addClass("btn remove-object")
+            .append('<span class="glyphicon glyphicon-remove"></span>')
+            .on("click", function() {
+              var objectId = $(this).parent().attr('id');
+              removeObject(objectId);
+              $("#" + objectId).remove();
+            })
+        )
+  );
+}
+
+// -- INTERACT JS -- //
+
+// target elements with the "draggable" class
+interact('.draggable')
+  .draggable({
+    // enable inertial throwing
+    inertia: true,
+    // keep the element within the area of it's parent
+    restrict: {
+      restriction: "parent",
+      endOnly: true,
+      elementRect: { top: 0, left: 0, bottom: 1, right: 1 }
+    },
+
+    // call this function on every dragmove event
+    onmove: dragMoveListener,
+    // call this function on every dragend event
+    onend: function (event) {
+      var textEl = event.target.querySelector('p');
+    }
+  })
+  .resizable({
+    edges: { left: true, right: true, bottom: true, top: true }
+  })
+  .on('resizemove', function (event) {
+    var objectId = event.target.getAttribute('id');
+    var objectProperties = getObjectProperties(objectId)
+
+    var target = event.target,
+        x = (parseFloat(objectProperties.x) || 0),
+        y = (parseFloat(objectProperties.y) || 0);
+
+    // update the element's style
+    target.style.width  = event.rect.width + '%';
+    target.style.height = event.rect.height + '%';
+
+    // translate when resizing from top or left edges
+    x += event.deltaRect.left;
+    y += event.deltaRect.top;
+
+    x = (x/640) * 100
+    y = (y/480) * 100
+
+    target.style.webkitTransform = target.style.transform =
+        'translate(' + x + '%,' + y + '%)';
+
+    width = (event.rect.width / 640) * 100
+    height = (event.rect.height / 480) * 100
+
+    updateObjectProperties(objectId, x, y, width, height)
+  });
+
+  function dragMoveListener (event) {
+    var objectId = event.target.getAttribute('id');
+    var objectProperties = getObjectProperties(objectId)
+
+    var target = event.target,
+        // keep the dragged position in the data-x/data-y attributes
+        x = (parseFloat(objectProperties.x) || 0) + event.dx,
+        y = (parseFloat(objectProperties.y) || 0) + event.dy;
+
+    x = ((x/640)*100)
+    y = ((y/480)*100)
+
+    // translate the element
+    target.style.webkitTransform =
+    target.style.transform =
+      'translate(' + x + '%, ' + y + '%)';
+
+    // update the posiion attributes
+    updateObjectProperties(objectId, x, y)
+  }
+
+  // this is used later in the resizing demo
+  window.dragMoveListener = dragMoveListener;
+</script>
+{% endblock %}

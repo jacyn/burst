@@ -1,0 +1,61 @@
+{% extends "base_panel.html" %}
+
+{% block top_container %}
+  USER ACCOUNTS
+  <p class="pull-right">
+    <a href="{% url "userman:add" %}" class="btn btn-info btn-sm"> <i class="icon-user-follow"></i> <span> Add User</span> </a>
+  </p>
+{% endblock %}
+
+{% block main_container %}
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Account type</th>
+        <th>Active</th>
+        <th>Last login</th>
+        <th>Date joined</th>
+      </tr>
+    </thead>
+
+    <tbody>
+    {% if users|length %}
+      {% for usr in users %}
+        <tr>
+          <td><a href="{% url "userman:read" usr.pk %}">{{ usr.username }}</a></td>
+          <td>
+            {% if usr.is_staff %}
+              <span class="label label-primary">Administrator</span>
+            {% else %}
+              <span class="label label-default">Normal</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if usr.is_active %}
+              <span class="label label-success">Active</span>
+            {% else %}
+              <span class="label label-danger">Deactivated</span>
+            {% endif %}
+          </td>
+          <td>{{ usr.last_login }}</td>
+          <td>{{ usr.date_joined }}</td>
+        </tr>
+      {% endfor %}
+    {% else %}
+      <tr>
+        <td colspan=5>No record</td>
+      </tr>
+    {% endif %}
+    </tbody>
+
+    <tfoot>
+      <tr>
+        <th colspan=4>Total Users</th>
+        <th>{{ users|length }}</th>
+      </tr>
+    </tfoot>
+
+  </table>
+
+{% endblock %}

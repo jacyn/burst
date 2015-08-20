@@ -1,0 +1,90 @@
+{% extends "base_panel.html" %}
+
+{% block top_container %}
+  SURVEY REPORTS
+  <p class="pull-right">
+    <div class="btn-group pull-right">
+      <button type="button" class="btn btn-theme03 btn-sm"><i class="icon-arrow-down"></i> Download Report</button>
+      <button type="button" class="btn btn-theme03 btn-sm dropdown-toggle" data-toggle="dropdown">
+        <span class="caret"></span>
+        <span class="sr-only">Toggle Dropdown</span>
+      </button>
+      <ul class="dropdown-menu" role="menu">
+        {% for format, label in export_formats %}
+          <li>
+            <a href="#" 
+              onclick="var f=document.forms['report_query']; var exp=document.getElementById('id_export_to'); exp.value='{{ format }}'; $(f).submit(); exp.value=''; return false;"
+              >{{ label }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <form method="get" id="id_report_query" action="" name="report_query">
+      <input type="hidden" id="id_export_to" name="export_to" value="" />
+      <input type="hidden" id="id_export_to" name="page" value="{{ page }}" />
+    </form>
+  </p>
+{% endblock %}
+
+{% block main_container %}
+
+<form class="form-inline" role="form" name="projectPageForm">
+<div class="form-group">
+  <label>URL Client: </label>
+
+  <select class="input-sm form-control" onChange="projectPageForm.submit();" name="page">
+    <option value=""> --- </option>
+    {% for page_detail in all_pages %}
+      <option value="{{ page_detail.pk }}" {% ifequal page page_detail.pk %}selected{% endifequal %}>/{{ page_detail.project.slug }}/{{ page_detail.slug }}/</option>
+    {% endfor %}
+  </select>
+</div>
+</form>
+
+{% if survey %}
+    <div class="table-autoscroll">
+      <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Date/Time Added</th>
+              {% for question in survey.survey_questions.all %}
+                <th>{{ question.label }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for result in survey_results|dictsortreversed:"date_created" %}
+            <tr>
+              <td>{{ result.pk }}</td>
+              <td>{{ result.date_created }}</td>
+              {% for answer in result.answers.all %}
+                <td>{{ answer.value|default:'-' }}</td>
+              {% endfor %}
+            </tr>
+            {% empty %}
+            <tr>
+              <td>No survey data</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+      </table>
+    </div>
+{% else %}
+    <div class="alert">
+      No records
+    </div>
+{% endif %}
+
+{% endblock %}
+
+{% block extrajs %}
+  <script>
+     $(document).ready(function(){
+        $('.dropdown-toggle').dropdown()
+    });
+  </script>
+{% endblock %}
+

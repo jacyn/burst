@@ -1,0 +1,78 @@
+{% extends "base_panel.html" %}
+{% load i18n %}
+
+{% block top_container %}
+  PAGE - {{ page_detail.name }}
+  <p class="pull-right">
+    <a href="{% url "app:edit_page" page_detail.pk %}" class="btn btn-info btn-sm"> <i class="icon-pencil"></i> <span> Edit Page</span> </a>
+    <a href="{% url "app:layout_main" page_detail.pk %}" class="btn btn-theme04 btn-sm"> <i class="icon-pencil"></i> <span> Edit Page Layout</span> </a>
+    {% if page_detail.live_mode %}
+      <a href="{% url "app:switch_page" page_detail.pk 0 %}" class="btn btn-sm btn-danger"><i class="icon-ban"></i> Switch to Test Mode</a>
+    {% else %}
+      <a href="{% url "app:switch_page" page_detail.pk 1 %}" class="btn btn-sm btn-success"><i class="icon-check"></i> Switch to Live Mode</a>
+    {% endif %}
+
+  </p>
+{% endblock %}
+
+
+{% block main_container %}
+
+  <table class="table">
+    <tbody>
+      <tr>
+        <th>Name</th>
+        <td>{{ page_detail.name|default:'-' }}</td>
+      </tr>
+      <tr>
+        <th>Slug</th>
+        <td>
+          {{ page_detail.slug|default:'-' }}
+        </td>
+      </tr>
+      <tr>
+        <th>Description</th>
+        <td>{{ page_detail.description|default:'-' }}</td>
+      </tr>
+      <tr>
+        <th>Layout</th>
+        <td>
+          {% if page_detail.page_objects.all %}
+            Preview <a href="#">/{{ page_detail.project.slug }}/{{ page_detail.slug }}/</a>
+          {% else %}
+            No Layout
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <th>Added by</th>
+        <td>{{ page_detail.added_by.username|default:'-' }}</td>
+      </tr>
+      <tr>
+        <th>Date Added</th>
+        <td>{{ page_detail.datetime_added|default:'-' }}</td>
+      </tr>
+      <tr>
+        <th>Last Modified</th>
+        <td>{{ page_detail.last_modified|default:'-' }}</td>
+      </tr>
+      <tr>
+        <th>Status</th>
+        <td> 
+          {% if page_detail.live_mode %}
+            <span class="label label-success">Live Mode</span>
+          {% else %}
+            <span class="label label-default">Test Mode</span>
+          {% endif %}
+        </td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <th colspan=2>
+          <a href="{% url 'app:pages' %}" class="btn btn-sm btn-default">Back To Pages</a>
+        </th>
+      </tr>
+    </tfoot>
+  </table>
+{% endblock %}
