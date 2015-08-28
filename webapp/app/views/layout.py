@@ -54,6 +54,7 @@ def objects(request):
     layout_objects = [ obj.as_dict() for obj in app_models.Object.objects.filter(active=True, page__pk=page_id).order_by('sequence') ]
     return HttpResponse(json.dumps(layout_objects), content_type="application/json")
 
+
 def object_image(request):
 
     if not request.is_ajax():
@@ -64,7 +65,7 @@ def object_image(request):
 
     try:
         # FIXME: one only; get the latest upload
-        image = File.objects.get(original_filename=filename)
+        image = File.objects.filter(original_filename=filename)[:1]
     except File.DoesNotExist, e:
         image = None
 
@@ -77,18 +78,20 @@ def object_image(request):
     return HttpResponse(j, content_type="application/json", status=200)
 
 
+from django.forms.util import ErrorList
+
 @csrf_exempt
+@login_required
 def save(request):
 
     if not request.is_ajax():
         messages.error(request, 'This action requires javascript (ajax).')
         return redirect_to_main(request)
 
-    submit_status = {
-        "changed": [],
-        "added": [],
-        "deleted": [],
-        "errors": [],
+    submitted_object = {
+        "Changed": [],
+        "Added": [],
+        "Deleted": [],
         }
 
     errors = []
@@ -120,37 +123,54 @@ def save(request):
                         form.update_model_instance(properties)
                         properties.save()
 
-                        submit_status["changed"].append(data["name"])
+                        submitted_object["Changed"].append(data["name"])
                     else:
                         # delete object
                         properties.delete()
-                        submit_status["deleted"].append(data["name"])
+                        submitted_object["Deleted"].append(data["name"])
                 else:
                     if form.cleaned_data.get('active'):
                         # new object
                         properties = form.get_new_model(page=page)
                         properties.save()
-                        submit_status["added"].append(data["name"])
 
+                        submitted_object["Added"].append(data["name"])
             else:
-                for error in form.errors["__all__"]:
-                    errors.append(error)
+                form_errors = json.loads(form.errors.as_json())
+                errors.append(u"[%s]" % data["name"])
+
+                for fld in form_errors:
+                    error_message = ""
+                    for err in form_errors[fld]:
+                        error_message += " %s " % err["message"]
+
+                    errors.append(u"<strong>%s.</strong> %s" % (fld, error_message))
 
         status_message = dict(
             error= "",
             success= "",
             )
+
         if len(errors):
-            status_message["error"] = "Failed to save layout. %s " % ", ".join(errors)
+            status_message["error"] = "There are errors in the layout submitted (see below). Please try again. \n %s " % "\n ".join(errors)
         else:
-            status_message["success"] = "Successfully saved layout of page '%s'." % page.name
+            has_affected_objects = False
+
+            submitted = []
+            for action in submitted_object:
+                if len(submitted_object[action]):
+                    has_affected_objects = True
+                    submitted.append("<strong>%s</strong>. %s" % (action, ", ".join(submitted_object[action])))
+                    
+            if has_affected_objects:
+                status_message["success"] = "Successfully saved layout of page '%s'. See changes below. \n %s" % (page.name, "\n ".join(submitted) )
 
         j = json.dumps({"messages": status_message})
         return HttpResponse(j, content_type="application/json", status=200)
 
 
-  
 @csrf_exempt
+@login_required
 def object_properties(request, template_name="layout/form.html"):
     context = RequestContext(request)
 
@@ -177,6 +197,7 @@ def object_properties(request, template_name="layout/form.html"):
     return HttpResponse(fragment, content_type="text/html", status=200)
 
 
+@login_required
 def preview(request, template_name="layout/preview.html"):
     context = RequestContext(request)
 
@@ -188,6 +209,7 @@ def preview(request, template_name="layout/preview.html"):
     )
     return http_response
 
+
 def view(request, project_slug=None, page_slug=None, template_name="layout/view.html"):
     context = RequestContext(request)
 
@@ -196,7 +218,7 @@ def view(request, project_slug=None, page_slug=None, template_name="layout/view.
 
     page = None
     try:
-        page = app_models.Page.objects.get(slug=page_slug, project__slug=project_slug)
+        page = app_models.Page.objects.get(slug=page_slug, project__slug=project_slug, live_mode=True)
     except app_models.Page.DoesNotExist, dne:
         page = None
         raise Http404()

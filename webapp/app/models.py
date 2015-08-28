@@ -75,6 +75,26 @@ class Page(models.Model):
         return self.name
 
 
+class TEXT_ALIGN:
+    LEFT    = 'left'
+    RIGHT   = 'right'
+    CENTER  = 'center'
+
+    CHOICES = [
+            ( LEFT, 'Left' ),
+            ( RIGHT, 'Right' ),
+            ( CENTER, 'Center' ),
+        ]
+
+    @classmethod
+    def get_choice_label(klass, choice):
+        label = None
+        for i in klass.CHOICES:
+            if i[0] == choice:
+                label = i[1]
+        return label
+
+from django.core.validators import MinValueValidator, MaxValueValidator
 class Object(models.Model):
     page = models.ForeignKey(
         Page, verbose_name=_("Page"),
@@ -108,6 +128,23 @@ class Object(models.Model):
     background_color = models.CharField(
         max_length=255, null=True, 
         blank=True)
+    #SCORE_CHOICES = zip( range(1,n), range(100,n) )
+    background_transparency = models.IntegerField(
+        null=True, blank=True, 
+        #choices=SCORE_CHOICES)
+        #max_value=100, min_value=0,
+        default=100, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    font_color = models.CharField(
+        max_length=255, null=True,
+        blank=True)
+    font_size = models.IntegerField(
+        null=True, blank=True, 
+        #max_value=48, min_value=8,
+        default=12)
+    text_align = models.CharField(
+        null=False, blank=False,
+        max_length=64, choices=TEXT_ALIGN.CHOICES,
+        default=TEXT_ALIGN.LEFT)
     active = models.BooleanField(
         default=True)
     datetime_added = models.DateTimeField(
@@ -139,10 +176,13 @@ class Object(models.Model):
             "background_width": self.background_width,
             "background_height": self.background_height,
             "background_color": self.background_color,
+            "background_transparency": self.background_transparency,
+            "font_color": self.font_color,
+            "font_size": self.font_size,
+            "text_align": self.text_align,
             "survey": list(self.survey.all().values_list('id', flat=True)),
             "active": self.active,
         }
-
 
 
 class Survey(models.Model):
@@ -151,8 +191,7 @@ class Survey(models.Model):
         blank=True, related_name='survey')
     title = models.CharField(
         _('Title'), max_length=100,
-        null=True, blank=True, 
-        help_text=_("Title for the Survey Form."))
+        null=True, blank=True)
     thanks = models.TextField(
         _('Message displayed after submitting the survey form.'))
     redirect_url = models.CharField(
@@ -187,7 +226,6 @@ class Survey(models.Model):
         return {
             "id": self.id,
             "title": self.title,
-            "slug": self.slug,
             "thanks": self.thanks,
             "submit": self.submit,
             "questions": list(self.survey_questions.all().values_list('label', flat=True)),
@@ -207,7 +245,7 @@ class SurveyQuestion(models.Model):
     slug = models.SlugField(
         _("Slug"), max_length=100, 
         blank=True, editable=True,
-        unique=True, default='')
+        default='')
     field_type = models.IntegerField(
         _("Answer Type"), max_length=100, 
         choices=fields.NAMES)
@@ -242,6 +280,7 @@ class SurveyQuestion(models.Model):
     class Meta:
         verbose_name = "Survey Question"
         verbose_name_plural = "Survey Questions"
+        unique_together = ('survey', 'slug',)
 
     def __str__(self):
         return self.label

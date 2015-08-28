@@ -18,6 +18,9 @@ from app import models as app_models
 def main(request, template_name="project/main.html"):
     context = RequestContext(request)
 
+    if not request.user.is_superuser:
+        raise Http404()
+
     projects = app_models.Project.objects.all()
 
     http_response = render_to_response(
@@ -37,6 +40,9 @@ def redirect_to_main(request):
 @login_required
 def read(request, project_id=None, template_name="project/read.html"):
     context = RequestContext(request)
+
+    if not request.user.is_superuser:
+        raise Http404()
 
     project_detail = app_models.Project.objects.get(pk=project_id)
 
@@ -68,6 +74,9 @@ def edit(request, project_id=None):
 def submit(request, project=None, template_name="project/form.html"):
     context = RequestContext(request)
 
+    if not request.user.is_superuser:
+        raise Http404()
+
     form = app_forms.ProjectForm(project=project)
     if request.POST:
         form = app_forms.ProjectForm(data=request.POST, instance=project)
@@ -98,6 +107,9 @@ def submit(request, project=None, template_name="project/form.html"):
 @login_required
 def switch_status(request, project_id=None, switch=0):
     context = RequestContext(request)
+
+    if not request.user.is_superuser:
+        raise Http404()
 
     live_mode = False
     if int(switch) == 1:

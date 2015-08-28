@@ -25,17 +25,17 @@ NAMES = (
     (TEXTAREA, _("Multi line text")),
     (EMAIL, _("Email")),
     (NUMBER, _("Number")),
-    (URL, _("URL")),
+    #(URL, _("URL")),
     (CHECKBOX, _("Check box")),
     (CHECKBOX_MULTIPLE, _("Check boxes")),
     (SELECT, _("Drop down")),
     (SELECT_MULTIPLE, _("Multi select")),
     (RADIO_MULTIPLE, _("Radio buttons")),
-    (FILE, _("File upload")),
+    #(FILE, _("File upload")),
     (DATE, _("Date")),
     (DATE_TIME, _("Date/time")),
     (DOB, _("Date of birth")),
-    (HIDDEN, _("Hidden")),
+    #(HIDDEN, _("Hidden")),
 )
 
 # Field classes for all available field types.

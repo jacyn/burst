@@ -15,6 +15,13 @@
         <div class="login-wrap">
         {% csrf_token %}
 
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                <a class="close" data-dismiss="alert" href="#">×</a>
+                Invalid Login Credentials.
+            </div>
+        {% endif %}
+
         <input id="id_username" name="username" type="text" class="form-control" placeholder="Username" autofocus {% if form.username.value %}value="{{ form.username.value }}"{% endif %}>
         <br />
         <input type="hidden" name="next" value="{{ next }}" />

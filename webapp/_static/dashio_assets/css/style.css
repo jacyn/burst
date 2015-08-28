@@ -214,6 +214,13 @@ ul.top-menu > li > .logout {
 	margin-top: 15px;
 }
 
+ul.top-menu > li > .user {
+	color: #f2f2f2;
+	font-size: 13px;
+	padding: 5px 15px;
+	margin-right: 10px;
+	margin-top: 15px;
+}
 
 /*sidebar navigation*/
 
@@ -1067,8 +1074,7 @@ PANELS CONFIGURATIONS
 .content-panel {
 	background: #ffffff;
 	box-shadow: 0px 3px 2px #aab2bd;
-	padding-top: 15px;
-	padding-bottom: 5px;
+    padding: 15px 5px 5px;
 }
 .content-panel h4 {
 	margin-left: 10px;
@@ -2725,7 +2731,7 @@ ul.inbox-pagination li {
 .chat-room .mid-side {
     width: 65%;
     background: #fff;
-    border-right: 1px solid #e5e8ef;
+    /* border-right: 1px solid #e5e8ef; */
 }
 
 .chat-room .right-side {

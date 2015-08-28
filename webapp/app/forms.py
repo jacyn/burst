@@ -134,18 +134,23 @@ class ObjectPropertiesForm(forms.ModelForm):
         model     = app_models.Object
         fields    = '__all__'
         widgets   = {
-                   'background_color': forms.widgets.TextInput(attrs={'type': 'color'}),
+                   'background_color': forms.widgets.TextInput(attrs={'type': 'color', 'value': '#000000'}),
+                   'font_color': forms.widgets.TextInput(attrs={'type': 'color', 'value': '#ffffff'}),
                    }
 
     helper = FormHelper()
     helper.form_tag = False
 
     helper.layout = Layout(
-        Field('name', css_class='form-control'),
-        Field('background_image', css_class='form-control'),
-        Field('background_color', css_class='form-control'),
+        Field('name', css_class='form-control input-sm'),
+        Field('background_image', css_class='form-control input-sm'),
+        Field('background_color', css_class='form-control input-sm color'),
+        Field('background_transparency', css_class='form-control input-sm'),
+        Field('font_color', css_class='form-control input-sm color'),
+        Field('font_size', css_class='form-control input-sm'),
+        Field('text_align', css_class='form-control input-sm'),
     )
-    
+
     def __init__(self, properties=None, *args, **kwargs):
         initial = { }
         if 'initial' in kwargs:
@@ -203,13 +208,13 @@ class SurveyForm(forms.ModelForm):
         """
 
         self.form = form
-        self.form_fields = form.survey_questions.all()
+        self.form_fields = form.survey_questions.all().filter(active=True).order_by("id")
         initial = kwargs.pop("initial", {})
         # If a FormEntry instance is given to edit, stores it's field
         # values for using as initial data.
         field_entries = {}
         if kwargs.get("instance"):
-            for question in kwargs["instance"].survey_questions.all():
+            for question in kwargs["instance"].survey_questions.all().filter(active=True).order_by("id"):
                 field_entries[question.field_id] = question.value
         super(SurveyForm, self).__init__(*args, **kwargs)
 
@@ -265,22 +270,29 @@ class SurveyForm(forms.ModelForm):
                 years = list(range(now.year, now.year - 120, -1))
                 self.fields[field_key].widget.years = years
 
+
             # Add identifying CSS classes to the field.
             css_class = field_class.__name__.lower()
+
+            """
             if field.required:
                 css_class += " required"
-                if (field.field_type != fields.CHECKBOX_MULTIPLE):
+                if field.field_type not in (fields.CHECKBOX_MULTIPLE, fields.CHECKBOX):
                     self.fields[field_key].widget.attrs["required"] = ""
+            """
             self.fields[field_key].widget.attrs["class"] = css_class
             if field.placeholder_text and not field.default:
                 text = field.placeholder_text
                 self.fields[field_key].widget.attrs["placeholder"] = text
 
-            crispy_layout_fields.append(Field(field_key, css_class='form-control'))
+            if field.field_type not in (fields.RADIO_MULTIPLE, fields.CHECKBOX_MULTIPLE, fields.CHECKBOX):
+                self.fields[field_key].widget.attrs["class"] = "form-control input-sm"
+
+            crispy_layout_fields.append(Field(field_key))
 
         crispy_layout_fields.append(
             FormActions(
-                Submit('save_changes', form.submit, css_class="btn btn-theme"),
+                Submit('save_changes', form.submit, css_class="btn btn-theme btn-sm"),
             )
         )
 
@@ -312,18 +324,21 @@ class CustomSurveyForm(forms.ModelForm):
     class Meta:
         model     = app_models.Survey
         fields    = '__all__'
+        widgets = {
+          'thanks': forms.Textarea(attrs={'rows':3, }),
+        }
 
     helper = FormHelper()
     helper.form_tag = False
 
     helper.layout = Layout(
-        Field('title', css_class='form-control'),
-        Field('thanks', css_class='form-control'),
-        Field('redirect_url', css_class='form-control'),
-        Field('submit', css_class='form-control'),
-        Field('active', css_class='form-control'),
+        Field('title', css_class='form-control input-sm'),
+        Field('thanks', css_class='form-control input-sm'),
+        Field('redirect_url', css_class='form-control input-sm'),
+        Field('submit', css_class='form-control input-sm'),
+        Field('active', css_class='form-control input-sm'),
         FormActions(
-            Submit('save_changes', 'Submit', css_class="btn btn-theme"),
+            Submit('save_changes', 'Submit', css_class="btn btn-theme btn-sm"),
         ),
     )
     
@@ -355,32 +370,32 @@ class CustomSurveyForm(forms.ModelForm):
 class CustomSurveyQuestionForm(forms.ModelForm):
     class Meta:
         model     = app_models.SurveyQuestion
-        exclude = [ 'survey' ]
+        exclude = ('survey', 'active', )
 
     helper = FormHelper()
     helper.form_tag = False
 
     helper.layout = Layout(
-        Field('label', css_class='form-control'),
-        Field('field_type', css_class='form-control'),
-        Field('choices', css_class='form-control'),
-        Field('required', css_class='form-control'),
-        Field('placeholder_text', css_class='form-control'),
-        Field('help_text', css_class='form-control'),
-        Field('active', css_class='form-control'),
+        Field('label', css_class='form-control input-sm'),
+        Field('field_type', css_class='form-control input-sm'),
+        Field('choices', css_class='form-control input-sm'),
+        Field('placeholder_text', css_class='form-control input-sm'),
+        #Field('help_text', css_class='form-control'),
+        Field('required', css_class='input-sm'),
         FormActions(
             Submit('save_changes', 'Submit', css_class="btn btn-theme btn-sm"),
         ),
     )
     
-    def __init__(self, survey=None, *args, **kwargs):
+    def __init__(self, survey_question=None, *args, **kwargs):
         initial = { }
         if 'initial' in kwargs:
             initial = kwargs.get('initial')
             del kwargs['initial']
-        if survey:
+
+        if survey_question:
             for fname in CustomSurveyQuestionForm().fields.keys():
-                initial[fname] = getattr(survey, fname)
+                initial[fname] = getattr(survey_question, fname)
 
         super(CustomSurveyQuestionForm, self).__init__(initial=initial, *args, **kwargs)
 
@@ -395,3 +410,16 @@ class CustomSurveyQuestionForm(forms.ModelForm):
         cleaned_data['slug'] = slugify( slug ).replace('-', '_')
 
         return cleaned_data
+
+    def get_new_model(self, **kwargs):
+        d = self.cleaned_data
+        defaults = dict(d)
+        defaults.update({
+            "survey": kwargs.get('survey'),
+        });
+        return app_models.SurveyQuestion(**defaults)
+
+    def update_model_instance(self, model):
+        for fname in self.cleaned_data.keys():
+            setattr(model, fname, self.cleaned_data.get(fname))
+

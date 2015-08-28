@@ -12,10 +12,10 @@
             <!--logo start-->
             <a href="index.html" class="logo"><b>SPLASH<span>SITE</span></b></a>
             <!--logo end-->
-
             <div class="top-menu">
               <ul class="nav pull-right top-menu">
-                    <li><a class="logout" href="{% url 'logout' %}"><i class="icon-logout"></i> Logout</a></li>
+                <li> <p class="user"><i class="icon-user"></i> Welcome <strong>{{ user.username }}</strong>! </p> </li>
+                <li><a class="logout" href="{% url 'logout' %}"><i class="icon-logout"></i> Logout</a></li>
               </ul>
             </div>
         </header> 
@@ -30,24 +30,28 @@
                           <span>Dashboard</span>
                       </a>
                   </li>
+                  {% if user.is_superuser %}
                   <li class="sub-menu dcjq-parent-li">
                       <a href="{% url 'app:projects' %}">
                           <i class="icon-folder"></i>
                           <span>Projects</span>
                       </a>
                   </li>
+                  {% endif %}
                   <li class="sub-menu dcjq-parent-li">
                       <a href="{% url 'app:pages' %}">
                           <i class="icon-docs"></i>
                           <span>Pages</span>
                       </a>
                   </li>
+                  {% if user.is_staff %}
                   <li class="sub-menu dcjq-parent-li">
                       <a href="{% url 'userman:main' %}">
                           <i class="icon-users"></i>
                           <span>Users</span>
                       </a>
                   </li>
+                  {% endif %}
                   <li class="sub-menu dcjq-parent-li">
                       <a href="{% url 'app:survey_reports' %}">
                           <i class="icon-bar-chart"></i>

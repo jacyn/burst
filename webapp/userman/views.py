@@ -19,6 +19,9 @@ from userman import forms as userman_forms
 def main(request, template_name="userman/main.html"):
     context = RequestContext(request)
 
+    if not request.user.is_staff:
+        raise Http404()
+
     users = User.objects.filter(is_superuser=False)
     if not request.user.is_superuser and request.user.is_staff:
         users = users.exclude(is_staff=True)
@@ -40,6 +43,9 @@ def redirect_to_main(request):
 @login_required
 def read(request, user_id=None, template_name="userman/read.html"):
     context = RequestContext(request)
+
+    if not request.user.is_staff:
+        raise Http404()
 
     user_detail = User.objects.get(pk=user_id)
 
@@ -70,6 +76,9 @@ def edit(request, user_id=None):
 def submit(request, user=None, template_name="userman/form.html"):
     context = RequestContext(request)
 
+    if not request.user.is_staff:
+        raise Http404()
+
     form = userman_forms.UserForm(user=user)
     if request.POST:
         form = userman_forms.UserForm(data=request.POST, instance=user)
@@ -99,6 +108,9 @@ def submit(request, user=None, template_name="userman/form.html"):
 def activate(request, user_id=None):
     context = RequestContext(request)
 
+    if not request.user.is_staff:
+        raise Http404()
+
     user = User.objects.get(pk=user_id)
     user.is_active = True
     user.save()
@@ -112,6 +124,9 @@ def activate(request, user_id=None):
 def deactivate(request, user_id=None):
     context = RequestContext(request)
 
+    if not request.user.is_staff:
+        raise Http404()
+
     user = User.objects.get(pk=user_id)
     user.is_active = False
     user.save()
@@ -121,8 +136,16 @@ def deactivate(request, user_id=None):
     return HttpResponseRedirect(reverse('userman:read', args=[user.pk]))
 
 
+@login_required
 def check_username(request):
     username = request.GET.get('username')
+
+    if not request.user.is_staff:
+        raise Http404()
+
+    if not request.is_ajax():
+        messages.error(request, 'This action requires javascript (ajax).')
+        return redirect_to_main(request)
 
     password_set = False
     try:

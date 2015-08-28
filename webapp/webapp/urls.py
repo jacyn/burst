@@ -22,5 +22,5 @@ for app in settings.LOCAL_APPS:
     )
 
 urlpatterns += patterns('', 
-    url(r'^(\w+)/(\w+)/$', 'app.views.layout.view'),
+    url(r'^(.*)/(.*)/$', 'app.views.layout.view', name='page_view'),
 )

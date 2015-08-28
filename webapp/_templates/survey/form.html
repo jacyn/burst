@@ -1,8 +1,11 @@
-  {% load crispy_forms_tags %}
+{% load crispy_forms_tags %}
+
+{% if survey.active %}
+  <h4>{{ survey.title|default:"Form" }}</h4>
 
   {% if form %}
     {% if form.errors %}
-        <div class="alert alert-error">
+        <div class="alert alert-danger">
             <a class="close" data-dismiss="alert" href="#">×</a>
             There are errors in the form submitted (see below). Please try again.
         </div>
@@ -13,3 +16,5 @@
 
   {% csrf_token %}
   {% crispy form %}
+
+{% endif %}

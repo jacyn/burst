@@ -1,6 +1,7 @@
 import sys
 import simplejson as json
 
+from django import get_version
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.contrib import messages
@@ -11,11 +12,13 @@ from django.shortcuts import render, render_to_response
 from django.middleware.csrf import get_token
 from django.core.serializers.json import DjangoJSONEncoder
 from django.views.decorators.csrf import csrf_exempt
+from django.forms.util import ErrorList
 
 from app import forms as app_forms
 from app import models as app_models
 
 
+@login_required
 def survey(request, template_name='survey/form.html'):
     """
     add / update survey
@@ -55,7 +58,7 @@ def survey(request, template_name='survey/form.html'):
             else:
                 # new object
                 survey = form.get_new_model(page_object=page_object)
-                survey = app_models.Survey.objects.create(**form.cleaned_data)
+                survey.save()
 
             j = json.dumps({"id": survey.pk})
             return HttpResponse(j, content_type="application/json", status=200)
@@ -79,6 +82,7 @@ def survey(request, template_name='survey/form.html'):
     return http_response
 
 
+@login_required
 def question(request, template_name='survey/form.html'):
     """
     add / update survey question
@@ -100,26 +104,38 @@ def question(request, template_name='survey/form.html'):
         if question_id:
             survey_question = survey.survey_questions.get(pk=question_id)
 
-    form = app_forms.CustomSurveyQuestionForm(survey_question)
+    form = app_forms.CustomSurveyQuestionForm(survey_question=survey_question)
     if request.method == "POST":
         form = app_forms.CustomSurveyQuestionForm(data=request.POST, instance=survey_question)
         if form.is_valid():
-            if survey_question:
-                if form.cleaned_data.get('active'):
-                    # existing
-                    survey_question.label = form.cleaned_data.get('label')
-                    survey_question.placeholder_text = form.cleaned_data.get('placeholder_text')
-                    survey_question.save()
-                else:
-                    # delete object
-                    survey_question.delete()
-                    print >> sys.stderr, "deleted survey question: %s" % form.cleaned_data.get('label')
-            else:
-                if form.cleaned_data.get('active'):
-                    # new object
-                    survey_question = app_models.SurveyQuestion.objects.create(survey=survey, **form.cleaned_data)
 
-            # messages.success(request, 'Saved your question "%s"' % survey_question.label)
+            # validate uniqueness of slug
+            question_exists = None
+            try:
+                question_exists = app_models.SurveyQuestion.objects.get(survey=survey, slug=form.cleaned_data['slug'])
+            except app_models.SurveyQuestion.DoesNotExist:
+                question_exists = None
+
+            if question_exists:
+                errors = form._errors.setdefault("label", ErrorList())
+                errors.append(u"Question already exists")
+                csrf_token_value = get_token(request)
+                context.update({
+                    'form': form,
+                    'csrf_token_value': csrf_token_value,
+                });
+                fragment = template_loader.render_to_string(template_name, context)
+                return HttpResponse(fragment, content_type="text/html", status=400)
+
+            if survey_question:
+                    # existing
+                form.update_model_instance(survey_question)
+                survey_question.save()
+            else:
+                # new object
+                survey_question = form.get_new_model(survey=survey)
+                survey_question.save()
+
             j = json.dumps({})
             return HttpResponse(j, content_type="application/json", status=200)
         else:
@@ -135,17 +151,6 @@ def question(request, template_name='survey/form.html'):
         template_name,
         {
             'form': form,
-        },
-        context_instance=context,
-    )
-    return http_response
-
-
-
-    http_response = render_to_response(
-        template_name,
-        {
-            'form': form,
             'survey': survey,
         },
         context_instance=context,
@@ -153,6 +158,7 @@ def question(request, template_name='survey/form.html'):
     return http_response
 
 
+@login_required
 def properties(request, template_name='survey/properties.html'):
     """
     list survey details
@@ -202,6 +208,8 @@ def preview(request, template_name='survey/form.html'):
     except app_models.Survey.DoesNotExist, dne:
         survey = None
 
+
+    print >> sys. stderr, "%s %s " % (survey, form)
     http_response = render_to_response(
         template_name, 
         {
@@ -220,10 +228,13 @@ def handler(request, template_name='survey/form.html'):
     context = RequestContext(request)
 
     survey_id = request.GET.get("id", None)
-    survey = app_models.Survey.objects.get(pk=survey_id)
+    try:
+        survey = app_models.Survey.objects.get(pk=survey_id)
+    except app_models.Survey.DoesNotExist:
+        survey = None
 
-    #if not survey:
-        # raise Http 404
+    if survey is None:
+        raise Http404()
     
     if request.method == "POST":
         form = app_forms.SurveyForm(survey, context, request.POST)
@@ -244,6 +255,7 @@ def handler(request, template_name='survey/form.html'):
             csrf_token_value = get_token(request)
             context.update({
                 'form': form,
+                'survey': survey,
                 'csrf_token_value': csrf_token_value,
             });
             fragment = template_loader.render_to_string(template_name, context)
@@ -253,35 +265,41 @@ def handler(request, template_name='survey/form.html'):
     return HttpResponse(j, content_type="application/json", status=200)
 
 
-from django import get_version
+@login_required
 def reports(request, template_name='survey/reports.html'):
     context = RequestContext(request)
 
-    survey = None
-    survey_results = None
+    surveys = None
     pages = app_models.Page.objects.all()
 
     page = request.GET.get('page', 0)
+    survey = request.GET.get('survey', 0)
     if page:
-        page_str = request.GET.get('page', None)
-        if page_str:
-            page = int(page_str)
-        if page:
-            survey = app_models.Survey.objects.get(page_object__pk=page)
-            survey_results = survey.results.all().exclude(test_mode=True)
+        page = int(page)
+        try:
+            surveys = app_models.Survey.objects.all().filter(page_object__page__pk=page)
+        except Exception, e:
+            surveys = None
+
+    if survey:
+        survey = int(survey)
+        surveys = surveys.filter(pk=survey)
+
+    print >> sys.stderr, "%s" % surveys
 
     view_context = {
         'page': page,
         'all_pages': pages,
         'survey': survey,
-        'survey_results': survey_results,
+        'surveys': surveys,
         'export_formats': settings.EXPORT_FORMATS,
     }
 
-    if ('export_to' in request.GET) and (request.GET.get('export_to') in settings.MIMETYPE_MAP) and survey_results:
+    if ('export_to' in request.GET) and (request.GET.get('export_to') in settings.MIMETYPE_MAP) and surveys:
         filetype = request.GET.get('export_to')
 
-        report_filename = "Survey Reports"
+        page_detail = pages.get(pk=page)
+        report_filename = "[SURVEY REPORT] %s - %s's %s" % (page_detail.project.owner.name, page_detail.project.name, page_detail.name)
         export_template_name = "survey/reports_template.txt"
         export_template = "%s/%s" % (settings.TEMPLATE_DIRS, export_template_name)
         loader = template_loader.get_template(export_template_name)
@@ -304,9 +322,22 @@ def reports(request, template_name='survey/reports.html'):
     return http_response
 
 
-def delete(request):
-    print >> sys.stderr, "%s" % request.GET
+@login_required
+def switch_question(request, survey_id=None, question_id=None, switch=0):
 
-    j = json.dumps({})
-    return HttpResponse(j, content_type="application/json", status=200)
+    active = False
+    if int(switch) == 1:
+        active = True
+
+    try:
+        survey = app_models.Survey.objects.get(pk=survey_id)
+        survey_question = survey.survey_questions.get(pk=question_id)
+        survey_question.active = active 
+        survey_question.save()
+
+        j = json.dumps({})
+        return HttpResponse(j, content_type="application/json", status=200)
+    except:
+        j = json.dumps({})
+        return HttpResponse(j, content_type="application/json", status=500)
 

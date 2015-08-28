@@ -14,9 +14,7 @@
       localStorage.setItem("survey-handler-url", '{% url "app:survey_handler" %}')
       localStorage.setItem("survey-test-enabled", '0')
 
-
       viewLayout('{% url "app:layout_objects" %}', "{{ page.pk }}");
-
     });
   </script>
 {% endblock %}

@@ -4,7 +4,7 @@
 {% block top_container %}
   PAGE - {{ page_detail.name }}
   <p class="pull-right">
-    <a href="{% url "app:edit_page" page_detail.pk %}" class="btn btn-info btn-sm"> <i class="icon-pencil"></i> <span> Edit Page</span> </a>
+    {% if user.is_superuser or user.is_staff %}<a href="{% url "app:edit_page" page_detail.pk %}" class="btn btn-info btn-sm"> <i class="icon-pencil"></i> <span> Edit Page</span> </a>{% endif %}
     <a href="{% url "app:layout_main" page_detail.pk %}" class="btn btn-theme04 btn-sm"> <i class="icon-pencil"></i> <span> Edit Page Layout</span> </a>
     {% if page_detail.live_mode %}
       <a href="{% url "app:switch_page" page_detail.pk 0 %}" class="btn btn-sm btn-danger"><i class="icon-ban"></i> Switch to Test Mode</a>
@@ -38,7 +38,7 @@
         <th>Layout</th>
         <td>
           {% if page_detail.page_objects.all %}
-            Preview <a href="#">/{{ page_detail.project.slug }}/{{ page_detail.slug }}/</a>
+            View <a href="#" onclick="window.open('{% url "page_view" page_detail.project.slug page_detail.slug %}')" >/{{ page_detail.project.slug }}/{{ page_detail.slug }}/</a>
           {% else %}
             No Layout
           {% endif %}

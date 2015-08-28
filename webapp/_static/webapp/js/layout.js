@@ -21,7 +21,6 @@ $(function() {
     };
   })($.fn.attr);
 
-
   $("#add-object").on("click", function() {
 
     var objectSeq = parseInt(localStorage.getItem("object-last-sequence")) || 0;
@@ -40,7 +39,8 @@ $(function() {
       "width": 250,
       "height": 200,
       "background_image": null, 
-      "background_image_url": null, 
+      "background_image_url": null,
+      "text_align": "left",
       "page": pageId,
       "survey": [],
       "active": true,
@@ -74,16 +74,16 @@ $(function() {
             var message;
             if (data.messages.success) {
               css_class = "alert-success";
-              message = data.messages.success;
+              message = data.messages.success.replace(/\n/g, "<br />");
             }
             else if(data.messages.error) {
               css_class = "alert-danger";
-              message = data.messages.error;
+              message = data.messages.error.replace(/\n/g, "<br />");
             }
 
             if (message) {
               $("#layout-result").attr("class", "alert " + css_class);
-              $("#layout-result p").text(message)
+              $("#layout-result p").html(message)
               $("#layout-result").show();
             }
             return;
@@ -114,6 +114,7 @@ function previewLayout(pageId) {
   $.each(localStorage, function(objectId, objectProperties) {
     if (!(/object-\d+/.test(objectId))) { return; }
     var objectAttrs = JSON.parse(objectProperties)
+    if (!(objectAttrs.active)) { return; }
     layoutObjects[objectAttrs.sequence] = objectAttrs;
   });
 
@@ -155,6 +156,11 @@ function viewLayoutObject(objectId, objectProperties) {
   x = objectProperties.x * ($(".layout-preview").width()/640);
   y = objectProperties.y * ($(".layout-preview").height()/480);
 
+  var rgba_background_color;
+  if (objectProperties.background_color) {
+    rgba_background_color = convertColor2RGBA(objectProperties.background_color, (objectProperties.background_transparency || 100));
+  }
+
   var div_id = '.layout-preview #' + objectProperties.code;
 
   $(div_id).css({ 
@@ -162,8 +168,26 @@ function viewLayoutObject(objectId, objectProperties) {
     '-webkit-transform': 'translate('+ x + 'px, ' + y + 'px)',
     'width': width + "%",
     'height': height + "%",
-    'background-color': objectProperties.background_color,
+    'background-color': rgba_background_color,
   });
+
+  if (objectProperties.font_color) {
+    $(div_id).css({ 
+      'color': objectProperties.font_color,
+    });
+  }
+
+  if (objectProperties.font_size) {
+    $(div_id).css({ 
+      'font-size': objectProperties.font_size + "px",
+    });
+  }
+
+  if (objectProperties.text_align) {
+    $(div_id).css({ 
+      'text-align': objectProperties.text_align,
+    });
+  }
 
   if (objectProperties.background_image) {
     $(div_id)
@@ -197,13 +221,36 @@ function updateObjectStyle(objectProperties) {
 
   var div_id = '.layout #' + objectProperties.code;
 
+  var rgba_background_color;
+  if (objectProperties.background_color) {
+    rgba_background_color = convertColor2RGBA(objectProperties.background_color, (objectProperties.background_transparency || 100));
+  }
+
   $(div_id).css({ 
     'transform': 'translate('+ objectProperties.x + 'px, ' + objectProperties.y + 'px)',
     '-webkit-transform': 'translate('+ objectProperties.x + 'px, ' + objectProperties.y + 'px)',
     'width': objectProperties.width + "px",
     'height': objectProperties.height + "px",
-    'background-color': objectProperties.background_color,
+    'background-color': rgba_background_color,
   });
+
+  if (objectProperties.font_color) {
+    $(div_id).css({ 
+      'color': objectProperties.font_color,
+    });
+  }
+
+  if (objectProperties.font_size) {
+    $(div_id).css({ 
+      'font-size': objectProperties.font_size + "px",
+    });
+  }
+
+  if (objectProperties.text_align) {
+    $(div_id).css({ 
+      'text-align': objectProperties.text_align,
+    });
+  }
 
   $(div_id + " p").text(objectProperties.name);
 
@@ -234,59 +281,73 @@ function updateSurveyForm(objectProperties) {
       $.ajax({
           type: 'GET', url: url, dataType: 'html', data: null,
           success: function(data) {
-            form_id = "surveyForm-" + surveyId;
-            form_sel = "#" + form_id;
+            if (/\S/.test(data)) {
+              form_id = "surveyForm-" + surveyId;
+              form_sel = "#" + form_id;
 
-            $('#' + objectProperties.code)
-              .append(
-                $('<form />')
-                  .addClass("survey-form form-style")
-                  .attr({
-                    "id": form_id,
-                    "method": "POST",
-                    })
-              )
+              $('#' + objectProperties.code)
+                .append(
+                  $('<form />')
+                    .addClass("survey-form form-style")
+                    .attr({
+                      "id": form_id,
+                      "method": "POST",
+                      })
+                )
 
-            $(form_sel).append(data);
-            $(form_sel).submit(function() {
-              url = handlerURL + "?id=" + (surveyId || '') + "&test_mode=" + ( testSurvey || 0);
-              $.ajax({
-                type: 'post', url: url, dataType: 'json', data: $(this).serialize(),
-                success: function(data) {
-                  if (data.redirect_url) {
-                    // redirect to next page
-                    return;
-                  }
-                  $("#" + objectProperties.code + " form").remove()
-                  $("#" + objectProperties.code)
-                    .append(
-                      $("<div />")
-                        .addClass("survey-form thank-you-message")
-                        .html("<strong>" + data.thank_you_message + "</strong>")
-                    )
+              $(form_sel).append(data);
+              $(form_sel).submit(function() {
+                url = handlerURL + "?id=" + (surveyId || '') + "&test_mode=" + ( testSurvey || 0);
+                $.ajax({
+                  type: 'post', url: url, dataType: 'json', data: $(this).serialize(),
+                  success: function(data) {
+                    if (data.redirect_url) {
+                      // redirect to next page
+                      $(location).attr("href", data.redirect_url);
+                      return;
+                    }
+                    $("#" + objectProperties.code + " form").remove()
+                    $("#" + objectProperties.code)
+                      .append(
+                        $("<div />")
+                          .addClass("survey-form thank-you-message")
+                          .html("<strong>" + data.thank_you_message + "</strong>")
+                      )
 
-                  console.log(data);
-                  //$('#generic-redirect-form').attr('action', data.redirect_url).submit();
-                },
-                error: function(jqXHR, textStatus, errorThrownerror) {
-                  if (jqXHR.status != 400) {
-                    alert('Failed request: ' + textStatus + ": Please refresh");
-                    $(form_sel).empty();
-                    return;
-                  }
-                  $(form_sel).html(jqXHR.responseText);
-                  $(form_sel + ' .cancel').click(function() {
+                    console.log(data);
+                    //$('#generic-redirect-form').attr('action', data.redirect_url).submit();
+                  },
+                  error: function(jqXHR, textStatus, errorThrownerror) {
+                    if (jqXHR.status != 400) {
+                      alert('Failed request: ' + textStatus + ": Please refresh");
                       $(form_sel).empty();
-                  });
-                }
+                      return;
+                    }
+                    $(form_sel).html(jqXHR.responseText);
+                    $(form_sel + ' .cancel').click(function() {
+                        $(form_sel).empty();
+                    });
+                  }
+                });
+                return false;
               });
-              return false;
-            });
+            }
           }
       });
 
     });
   }
+}
+
+function convertColor2RGBA(hex, opacity) {
+
+    hex = hex.replace('#','');
+
+    r = parseInt(hex.substring(0,2), 16);
+    g = parseInt(hex.substring(2,4), 16);
+    b = parseInt(hex.substring(4,6), 16);
+
+    return 'rgba('+r+','+g+','+b+','+opacity/100+')';
 }
 
 function getObjectProperties(objectId) {
@@ -390,7 +451,7 @@ var displayObjectProperties = function () {
         $('<form/>')
           .attr({
             "id": form_id,
-            "class": "form-horizontal form-style",
+            "class": "form-horizontal properties-form",
             "method": "POST",
             })
       );
@@ -428,12 +489,34 @@ var displayObjectProperties = function () {
 
           // object name on change
           $(form_sel+' #id_name').on('keyup', function () {
-              updateObjectProperty(objectProperties.code, "name", $("#id_name").val());
+              updateObjectProperty(objectProperties.code, "name", $(this).val());
           });
+
+          $(".color").attr("style", "width: 5em;");
 
           // background_color on change
           $(form_sel+' #id_background_color').on('change', function () {
-              updateObjectProperty(objectProperties.code, "background_color", $("#id_background_color").val());
+              updateObjectProperty(objectProperties.code, "background_color", $(this).val());
+          });
+
+          // font_color on change
+          $(form_sel+' #id_font_color').on('change', function () {
+              updateObjectProperty(objectProperties.code, "font_color", $(this).val());
+          });
+
+          // background_transparency on change
+          $(form_sel+' #id_background_transparency').on('input', function () {
+              updateObjectProperty(objectProperties.code, "background_transparency", $(this).val());
+          });
+
+          // font_size on change
+          $(form_sel+' #id_font_size').on('input', function () {
+              updateObjectProperty(objectProperties.code, "font_size", $(this).val());
+          });
+
+          // text_align on change
+          $(form_sel+' #id_text_align').on('input', function () {
+              updateObjectProperty(objectProperties.code, "text_align", $(this).val());
           });
 
       },
@@ -456,6 +539,9 @@ function removeObject(objectId) {
   $(".object-properties #detail-"+objectId).remove();
 
   $("#" + objectId).remove();
+  $("#heading-" + objectId).remove();
+  $("#detail-" + objectId).remove();
+  $("#survey-properties-" + objectId).remove();
 }
 
 function constructObject(objectSeq, objectProperties) {
@@ -471,7 +557,7 @@ function constructObject(objectSeq, objectProperties) {
       .attr({
         "id": objectProperties.code,
         })
-      .addClass("draggable object")
+      .addClass("draggable object edit-object")
       .on("click", displayObjectProperties)
       .append(
         $('<p/>')
@@ -492,6 +578,7 @@ function constructObject(objectSeq, objectProperties) {
     .append(
       $('<div />')
         .attr({
+          "id": "heading-" + objectProperties.code,
           "class": "panel-heading",
         })
         .append(

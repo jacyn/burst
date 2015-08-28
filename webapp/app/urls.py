@@ -27,6 +27,6 @@ urlpatterns = patterns('app.views',
     url(r'^survey/question/$', 'survey.question', name='survey_question'),
     url(r'^survey/properties/$', 'survey.properties', name='survey_properties'),
     url(r'^survey/reports/$', 'survey.reports', name='survey_reports'),
-    url(r'^survey/delete/$', 'survey.delete', name='survey_delete'),
+    url(r'^survey/question/switch/(\d+)/(\d+)/(0|1)/$', 'survey.switch_question', name='survey_question_switch'),
 
     )

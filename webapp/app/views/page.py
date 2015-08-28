@@ -80,6 +80,9 @@ def edit(request, page_id=None):
 def submit(request, page=None, template_name="page/form.html"):
     context = RequestContext(request)
 
+    if not request.user.is_superuser:
+        raise Http404()
+
     form = app_forms.PageForm(page=page)
     if request.POST:
         form = app_forms.PageForm(data=request.POST, instance=page)

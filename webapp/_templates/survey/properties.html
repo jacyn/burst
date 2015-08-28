@@ -1,28 +1,64 @@
 
 {% if survey %}
-  <div>Survey Details</div>
-
-  <h5><strong>Survey: </strong><a class="survey" href="#">{{ survey.title }}</a> </h5> 
-  <div id="survey-detail-{{ survey.pk }}"></div>
-  <h5><strong>Questions:  </strong>
-  {% for question in survey.survey_questions.all %}
-    <p>
-      <a id="{{ question.pk }}" class="survey-question" href="#">{{ question.label }}</a>
-      <div id="question-detail-{{ question.pk }}"></div>
+  <div class="row">
+    <span class="title">Survey Details</span>
+    <a class="survey btn btn-info btn-xs pull-right" href="#"><i class="icon-pencil"></i> Edit Survey</a>
+    <p><span class="label label-default">TITLE: {{ survey.title|default:'No Survey Title'|truncatechars:20 }}</span>
+        <span class="label label-default">STATUS: {% if survey.active %}Enabled{% else %}Disabled{% endif %}</span>
     </p>
+  </div>
+  <div id="survey-detail-{{ survey.pk }}" class="survey-detail"></div>
+
+  <div class="row">
+    <span class="title">Questions</span>
+    <a class="survey-question btn btn-info btn-xs pull-right" href="#"><i class="icon-plus"></i> Add Question</a>
+    <p><span class="label label-default">{{ survey.survey_questions.all|length|default:0 }} Question(s)</span></p>
+  </div>
+  <div id="question-detail-" class="survey-detail"></div>
+
+  {% for question in survey.survey_questions.all|dictsort:"id" %}
+    <div class="row">
+      <span><i class="icon-question"></i> {{ question.label|truncatechars:30 }}</span>
+      {% if question.active %}
+        <a href="#" class="question-switch pull-right" url="{% url 'app:survey_question_switch' survey.pk question.pk 0 %}"> Disable</a>
+      {% else %}
+        <a href="#" class="question-switch pull-right" url="{% url 'app:survey_question_switch' survey.pk question.pk 1 %}"> Enable</a>
+      {% endif %}
+      <span class="pull-right"> | </span>
+      <a id="{{ question.pk }}" class="survey-question pull-right" href="#">Edit</a>
+    </div>
+    <div id="question-detail-{{ question.pk }}" class="survey-detail"></div>
   {% endfor %}
-  <p>
-    <a class="survey-question" href="#">+ Add Question</a>
-    <div id="question-detail-"></div>
-  </p>
 
 {% else %}
-  <a class="survey" href="#">+ Create Survey</a>
-  <div id="survey-detail-"></div>
+
+  <div class="row">
+    <span class="title">Survey Details</span>
+    <a class="survey btn btn-info btn-xs pull-right" href="#"><i class="icon-plus"></i> Add Survey</a>
+    <p><span class="label label-default">No Survey</span></p>
+  </div>
+  <div id="survey-detail-" class="survey-detail"></div>
+
 {% endif %}
 
 <script type="text/javascript">
   $(function() {
+
+    $(".question-switch").on("click", function() {
+      $.ajax({
+          type: 'GET', url: $(this).attr("url"), dataType: 'html', data: null,
+          success: function(data) {
+            console.log(data);
+
+            objectId = "{{ page_object.code }}";
+
+            var objectProperties = getObjectProperties(objectId);
+            updateSurveyForm(objectProperties);
+            displaySurveyProperties(objectProperties);
+
+          }
+      });
+    });
 
     $(".survey").on("click", function() {
 
@@ -35,8 +71,7 @@
             form_sel = "#" + form_id
 
             objectCode = "{{ object_code }}";
-            console.log(objectCode);
-            $(".survey-properties div").empty();
+            $(".survey-properties div.survey-detail").empty();
 
             $("#survey-properties-"+ objectCode +" #survey-detail-{{ survey.pk }}")
               .empty()
@@ -44,7 +79,7 @@
                   $('<form/>')
                     .attr({
                       "id": form_id,
-                      "class": "form-horizontal form-style",
+                      "class": "form-horizontal properties-form",
                       "method": "POST",
                       })
                 )
@@ -59,7 +94,6 @@
                     .append("Successfully updated survey")
       
                   var objectProperties = getObjectProperties(objectCode);
-                  console.log(objectCode, objectProperties)
                   objectProperties.survey.push(data.id);
                   surveys = jQuery.unique( objectProperties.survey );
 
@@ -94,19 +128,18 @@
       $.ajax({
           type: 'GET', url: url, dataType: 'html', data: null,
           success: function(data) {
-            console.log(data);
             form_id = "surveyQuestionForm-" + questionId;
             form_sel = "#" + form_id;
 
             objectId = "{{ page_object.code }}";
-            $(".survey-properties div").empty();
+            $(".survey-properties div.survey-detail").empty();
             $("#survey-properties-"+ objectId +" #question-detail-" + questionId)
               .empty()
               .append(
                   $('<form/>')
                     .attr({
                       "id": form_id,
-                      "class": "form-horizontal form-style",
+                      "class": "form-horizontal properties-form",
                       "method": "POST",
                       })
                 )
@@ -127,6 +160,7 @@
                 },
                 error: function(jqXHR, textStatus, errorThrownerror) {
                   if (jqXHR.status != 400) {
+                    alert(jqXHR.responseText);
                     alert('Failed request: ' + textStatus + ": Please refresh");
                     $(form_sel).empty();
                     return;

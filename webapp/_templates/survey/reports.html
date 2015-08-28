@@ -4,8 +4,8 @@
   SURVEY REPORTS
   <p class="pull-right">
     <div class="btn-group pull-right">
-      <button type="button" class="btn btn-theme03 btn-sm"><i class="icon-arrow-down"></i> Download Report</button>
-      <button type="button" class="btn btn-theme03 btn-sm dropdown-toggle" data-toggle="dropdown">
+      <button class="dropdown-toggle btn btn-info btn-sm" data-toggle="dropdown">
+        <i class="icon-arrow-down"></i> Download Report
         <span class="caret"></span>
         <span class="sr-only">Toggle Dropdown</span>
       </button>
@@ -22,28 +22,44 @@
 
     <form method="get" id="id_report_query" action="" name="report_query">
       <input type="hidden" id="id_export_to" name="export_to" value="" />
-      <input type="hidden" id="id_export_to" name="page" value="{{ page }}" />
+      <input type="hidden" id="id_page" name="page" value="{{ page }}" />
+      <input type="hidden" id="id_survey" name="survey" value="{{ survey }}" />
     </form>
   </p>
+
 {% endblock %}
 
 {% block main_container %}
 
-<form class="form-inline" role="form" name="projectPageForm">
+<form class="form-inline content-nav" role="form" name="projectPageForm">
 <div class="form-group">
-  <label>URL Client: </label>
+  <label><strong>FILTER </strong></label>
 
-  <select class="input-sm form-control" onChange="projectPageForm.submit();" name="page">
-    <option value=""> --- </option>
+  <select class="input-sm form-control" onChange="exp=$('#select_id_survey').val(''); projectPageForm.submit();" name="page">
+    <option value=""> [ Select Page URL ] </option>
     {% for page_detail in all_pages %}
       <option value="{{ page_detail.pk }}" {% ifequal page page_detail.pk %}selected{% endifequal %}>/{{ page_detail.project.slug }}/{{ page_detail.slug }}/</option>
     {% endfor %}
   </select>
+  
+  <select class="input-sm form-control" onChange="projectPageForm.submit();" name="survey" id="select_id_survey">
+    <option value="">{% if surveys %}[ All Survey ]{% else %} --- {% endif %}</option>
+    {% for survey_detail in surveys %}
+      <option value="{{ survey_detail.pk }}" {% ifequal survey survey_detail.pk %}selected{% endifequal %}>{{ survey_detail.title }}</option>
+    {% endfor %}
+  </select>
+
 </div>
 </form>
 
-{% if survey %}
+{% if surveys %}
+  {% for survey in surveys %}
     <div class="table-autoscroll">
+
+      <div class="report-title">
+          {{ survey.title }}
+      </div>
+
       <table class="table table-striped">
           <thead>
             <tr>
@@ -56,14 +72,16 @@
           </thead>
 
           <tbody>
-            {% for result in survey_results|dictsortreversed:"date_created" %}
-            <tr>
-              <td>{{ result.pk }}</td>
-              <td>{{ result.date_created }}</td>
-              {% for answer in result.answers.all %}
-                <td>{{ answer.value|default:'-' }}</td>
-              {% endfor %}
-            </tr>
+            {% for result in survey.results.all|dictsortreversed:"date_created" %}
+              {% if not result.test_mode %}
+                <tr>
+                  <td>{{ result.pk }}</td>
+                  <td>{{ result.date_created }}</td>
+                  {% for answer in result.answers.all %}
+                    <td>{{ answer.value|default:'-' }}</td>
+                  {% endfor %}
+                </tr>
+              {% endif %}
             {% empty %}
             <tr>
               <td>No survey data</td>
@@ -72,9 +90,10 @@
         </tbody>
       </table>
     </div>
+  {% endfor %}
 {% else %}
     <div class="alert">
-      No records
+      No survey for this page.
     </div>
 {% endif %}
 
