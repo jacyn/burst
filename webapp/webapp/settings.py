@@ -54,6 +54,7 @@ INSTALLED_APPS = (
     'filer',
     'easy_thumbnails',
     'crispy_forms',
+    'django_facebook',
 )
 INSTALLED_APPS += LOCAL_APPS
 
@@ -149,6 +150,15 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     "django.core.context_processors.tz",
     "django.contrib.messages.context_processors.messages",
     # ...
+    "django_facebook.context_processors.facebook",
+    "django.core.context_processors.request",
+)
+
+FACEBOOK_APP_ID = "679905488776591"
+FACEBOOK_APP_SECRET = "eb2e35f95cb11c1e73d90f76f339e1b5"
+
+AUTHENTICATION_BACKENDS = (
+    'django_facebook.auth_backends.FacebookBackend',
 )
 
 TEMPLATE_DIRS = (
@@ -194,3 +204,9 @@ MIMETYPE_MAP = {
 }
 
 
+XDN_MESSAGING_API_USER = "u/5/testapp"
+XDN_MESSAGING_API_PSWD = "ufSJzHjP68ySByy9CpfZ"
+XDN_MESSAGING_API_USAGETYPE = "TEST_NB_FREE"
+
+XDN_MESSAGING_API_URL = "http://api.xdn.localhost/documents"
+XDN_MESSAGING_API_CONTENT_TYPE  = "application/vnd.net.wyrls.Document-v3+json"

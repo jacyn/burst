@@ -13,6 +13,9 @@ urlpatterns = patterns('',
 
     url(r'^accounts/login/', 'django.contrib.auth.views.login', name='login'),
     url(r'^accounts/logout/', 'django.contrib.auth.views.logout_then_login' , name='logout'),
+
+    (r'^facebook/', include('django_facebook.urls')),
+    (r'^fbaccounts/', include('django_facebook.auth_urls')),
 )
 
 ## http://stackoverflow.com/questions/19171570/a-real-example-of-url-namespace

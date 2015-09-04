@@ -18,12 +18,14 @@ HIDDEN = 12
 NUMBER = 13
 URL = 14
 DOB = 15
+MOBILE_NUMBER = 16
 
 # Names for all available field types.
 NAMES = (
     (TEXT, _("Single line text")),
     (TEXTAREA, _("Multi line text")),
     (EMAIL, _("Email")),
+    (MOBILE_NUMBER, ("Mobile Number")),
     (NUMBER, _("Number")),
     #(URL, _("URL")),
     (CHECKBOX, _("Check box")),
@@ -53,6 +55,7 @@ CLASSES = {
     DATE_TIME: forms.DateTimeField,
     DOB: forms.DateField,
     HIDDEN: forms.CharField,
+    MOBILE_NUMBER: forms.CharField,
     NUMBER: forms.FloatField,
     URL: forms.URLField,
 }

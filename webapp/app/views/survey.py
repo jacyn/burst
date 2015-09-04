@@ -65,6 +65,7 @@ def survey(request, template_name='survey/form.html'):
         else:
             csrf_token_value = get_token(request)
             context.update({
+                'properties': True,
                 'form': form,
                 'csrf_token_value': csrf_token_value,
             });
@@ -74,6 +75,7 @@ def survey(request, template_name='survey/form.html'):
     http_response = render_to_response(
         template_name,
         {
+            'properties': True,
             'form': form,
             'survey': survey,
         },
@@ -121,6 +123,7 @@ def question(request, template_name='survey/form.html'):
                 errors.append(u"Question already exists")
                 csrf_token_value = get_token(request)
                 context.update({
+                    'properties': True,
                     'form': form,
                     'csrf_token_value': csrf_token_value,
                 });
@@ -141,6 +144,7 @@ def question(request, template_name='survey/form.html'):
         else:
             csrf_token_value = get_token(request)
             context.update({
+                'properties': True,
                 'form': form,
                 'csrf_token_value': csrf_token_value,
             });
@@ -150,6 +154,7 @@ def question(request, template_name='survey/form.html'):
     http_response = render_to_response(
         template_name,
         {
+            'properties': True,
             'form': form,
             'survey': survey,
         },
@@ -242,24 +247,26 @@ def handler(request, template_name='survey/form.html'):
             if form.cleaned_data.keys():
                 survey_result = form.get_new_model(survey=survey)
                 survey_result.save()
+                if survey_result:
+                    form.set_related_objects(survey_result)
+                    survey_result.save()
 
-                form.set_related_objects(survey_result)
-                survey_result.save()
+                    j = json.dumps({
+                      "thank_you_message": survey.thanks,
+                      "redirect_url": survey.redirect_url
+                    })
+                    return HttpResponse(j, content_type="application/json", status=200)
 
-                j = json.dumps({
-                  "thank_you_message": survey.thanks,
-                  "redirect_url": survey.redirect_url
-                })
-                return HttpResponse(j, content_type="application/json", status=200)
-        else:
-            csrf_token_value = get_token(request)
-            context.update({
-                'form': form,
-                'survey': survey,
-                'csrf_token_value': csrf_token_value,
-            });
-            fragment = template_loader.render_to_string(template_name, context)
-            return HttpResponse(fragment, content_type="text/html", status=400)
+                # add error to form that saving failed
+
+        csrf_token_value = get_token(request)
+        context.update({
+            'form': form,
+            'survey': survey,
+            'csrf_token_value': csrf_token_value,
+        });
+        fragment = template_loader.render_to_string(template_name, context)
+        return HttpResponse(fragment, content_type="text/html", status=400)
 
     j = json.dumps({})
     return HttpResponse(j, content_type="application/json", status=200)

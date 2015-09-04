@@ -1,7 +1,7 @@
 {% load crispy_forms_tags %}
 
 {% if survey.active %}
-  <h4>{{ survey.title|default:"Form" }}</h4>
+  {% if not properties %}<h4>{{ survey.title|default:"Form" }}</h4>{% endif %}
 
   {% if form %}
     {% if form.errors %}
